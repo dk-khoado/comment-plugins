@@ -1,0 +1,33 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DB")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  content   String
+  authorId  String
+  author    User?     @relation(fields: [authorId], references: [id], onDelete: Cascade) // Optional: Link to a User model for authorship
+  parentId  String? // Optional: To support nested comments
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  postId    String? // Optional: Allows linking to a Post model if it exists
+  postType  String? // Optional: For multi-entity commenting (e.g., "post", "article")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model User {
+  id      String    @id @default(cuid())
+  name    String?
+  email   String?   @unique
+  Comment Comment[]
+}
