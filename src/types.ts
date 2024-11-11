@@ -1,10 +1,11 @@
+import { Comment as CommentModel } from "@prisma/client";
 import { DateTime, Str } from "chanfana";
 import { z } from "zod";
 
-export const Task = z.object({
-	name: Str({ example: "lorem" }),
-	slug: Str(),
-	description: Str({ required: false }),
-	completed: z.boolean().default(false),
-	due_date: DateTime(),
+export const Comment = z.object({
+  content: Str({ required: true }),
+  authorId: Str({ required: true }),
+  parentId: Str().optional(),
+  postId: Str().optional(),
+  postType: Str().optional(),
 });

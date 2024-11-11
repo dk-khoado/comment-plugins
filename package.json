@@ -7,7 +7,11 @@
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "cf-typegen": "wrangler types",
-    "create-migration": "npx wrangler d1 migrations create my-blog"
+    "create-migration": "npx wrangler d1 migrations create my-blog",
+    "apply-migration": "npx wrangler d1 migrations apply my-blog --remote",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@prisma/adapter-d1": "^5.22.0",
@@ -21,6 +25,7 @@
     "@types/node": "20.8.3",
     "@types/service-worker-mock": "^2.0.1",
     "prisma": "^5.22.0",
+    "vitest": "^2.1.4",
     "wrangler": "^3.60.3"
   },
   "packageManager": "yarn@4.5.1"

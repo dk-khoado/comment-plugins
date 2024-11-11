@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Comments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include the CryptoJS library for MD5 hashing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js"></script>
+    <style>
+      .toast {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        background-color: #333;
+        color: #fff;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        transform: translateY(1rem);
+        transition: opacity 0.3s, transform 0.3s;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 p-6">
+    <div class="container mx-auto">
+      <h1 class="text-3xl font-bold mb-6">Comments</h1>
+      <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+        <h2 class="text-2xl font-semibold mb-4">Add a Comment</h2>
+        <form id="commentForm" class="space-y-4">
+          <div>
+            <label for="author" class="block text-sm font-medium text-gray-700"
+              >Author:</label
+            >
+            <input
+              type="text"
+              id="author"
+              name="author"
+              required
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700"
+              >Email:</label
+            >
+            <input
+              type="email"
+              id="email"
+              name="email"
+              required
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
+          </div>
+          <div>
+            <label for="content" class="block text-sm font-medium text-gray-700"
+              >Comment:</label
+            >
+            <textarea
+              id="content"
+              name="content"
+              required
+              class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            ></textarea>
+          </div>
+          <button
+            type="submit"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Submit
+          </button>
+        </form>
+        <div id="formError" class="text-red-500 mt-4 hidden">
+          Failed to add comment
+        </div>
+      </div>
+      <h2 class="text-2xl font-semibold mb-4">Comments List</h2>
+      <div id="loading" class="text-center hidden">
+        <svg
+          class="animate-spin h-5 w-5 text-gray-500 mx-auto"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v8H4z"
+          ></path>
+        </svg>
+      </div>
+      <ul id="commentList" class="space-y-4"></ul>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toastContainer"></div>
+    <script>
+      // Function to generate avatar URL from email and name
+      function generateAvatarUrl(name, size = 40) {
+        const initials = name
+          .split(" ")
+          .map((word) => word[0])
+          .join("");
+        return `https://ui-avatars.com/api/?name=${initials}&size=${size}&background=random`;
+      }
+    </script>
+
+    <script>
+      document
+        .getElementById("commentForm")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const author = document.getElementById("author").value;
+          const email = document.getElementById("email").value;
+          const content = document.getElementById("content").value;
+          const postId = getQueryParam("postId");
+
+          document.getElementById("formError").classList.add("hidden");
+          document.getElementById("loading").classList.remove("hidden");
+
+          const response = await fetch("/api/comments-and-authors", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              author: { name: author, email: email },
+              comment: { content: content, postId: postId },
+            }),
+          });
+
+          const result = await response.json();
+
+          document.getElementById("loading").classList.add("hidden");
+
+          if (result.success) {
+            addCommentToList(result.comment, true);
+            document.getElementById("commentForm").reset();
+            showToast("Comment added successfully");
+          } else {
+            document.getElementById("formError").classList.remove("hidden");
+            showToast("Failed to add comment", true);
+          }
+        });
+
+      async function loadComments(postId) {
+        document.getElementById("loading").classList.remove("hidden");
+
+        const response = await fetch(`/api/comments/${postId}`);
+        const data = await response.json();
+
+        document.getElementById("loading").classList.add("hidden");
+
+        if (data.success) {
+          data.result.comments.forEach(addCommentToList);
+        } else {
+          showToast("Failed to load comments", true);
+        }
+      }
+
+      function addCommentToList(comment, atTop = false) {
+        const commentList = document.getElementById("commentList");
+        const commentItem = document.createElement("li");
+        commentItem.className =
+          "bg-white p-4 rounded-lg shadow-md flex items-start space-x-4";
+        commentItem.innerHTML = `
+            <img src="${generateAvatarUrl(
+              comment?.author?.name
+            )}" alt="Avatar" class="w-10 h-10 rounded-full" loading="lazy">
+          <div>
+            <div class="flex items-center space-x-2">
+              <strong class="block text-lg font-semibold">${
+                comment?.author?.name
+              }</strong>
+              <span class="text-sm text-gray-500">${new Date(
+                comment.createdAt
+              ).toLocaleString()}</span>
+            </div>
+            <p class="mt-2 text-gray-600">${comment.content}</p>
+            <button class="text-sm text-indigo-600 hover:underline" onclick="showReplyForm('${
+              comment.id
+            }')">Reply</button> 
+            <div id="replyForm-${comment.id}" class="hidden mt-4">
+              <form onsubmit="submitReply(event, '${comment.id}')">
+                <div>
+                  <label for="replyAuthor-${
+                    comment.id
+                  }" class="block text-sm font-medium text-gray-700">Author:</label>
+                  <input type="text" id="replyAuthor-${
+                    comment.id
+                  }" name="author" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                </div>
+                <div>
+                  <label for="replyEmail-${
+                    comment.id
+                  }" class="block text-sm font-medium text-gray-700">Email:</label>
+                  <input type="email" id="replyEmail-${
+                    comment.id
+                  }" name="email" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                </div>
+                <div>
+                  <label for="replyContent-${
+                    comment.id
+                  }" class="block text-sm font-medium text-gray-700">Reply:</label>
+                  <textarea id="replyContent-${
+                    comment.id
+                  }" name="content" required class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                </div>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Submit</button>
+              </form>
+            </div>
+          </div>
+        `;
+        if (atTop === true) {
+          commentList.insertBefore(commentItem, commentList.firstChild);
+        } else {
+          commentList.appendChild(commentItem);
+        }
+      }
+
+      function showReplyForm(commentId) {
+        const replyForm = document.getElementById(`replyForm-${commentId}`);
+        replyForm.classList.toggle("hidden");
+      }
+
+      async function submitReply(event, parentId) {
+        event.preventDefault();
+
+        const author = document.getElementById(`replyAuthor-${parentId}`).value;
+        const email = document.getElementById(`replyEmail-${parentId}`).value;
+        const content = document.getElementById(
+          `replyContent-${parentId}`
+        ).value;
+
+        document.getElementById("loading").classList.remove("hidden");
+
+        const response = await fetch("/api/comments-and-authors", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            author: { name: author, email: email },
+            comment: { content: content, parentId: parentId },
+          }),
+        });
+
+        const result = await response.json();
+
+        document.getElementById("loading").classList.add("hidden");
+
+        if (result.success) {
+          addCommentToList(result.comment);
+          showToast("Reply added successfully");
+        } else {
+          showToast("Failed to add reply", true);
+        }
+      }
+
+      function showToast(message, isError = false) {
+        const toastContainer = document.getElementById("toastContainer");
+        const toast = document.createElement("div");
+        toast.className = `toast ${
+          isError ? "bg-red-500" : "bg-green-500"
+        } show`;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+          toast.classList.remove("show");
+          setTimeout(() => toast.remove(), 300);
+        }, 3000);
+      }
+
+      function getQueryParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+      }
+
+      // Get postId from URL and load comments
+      const postId = getQueryParam("postId");
+      if (postId) {
+        loadComments(postId);
+      } else {
+        showToast("No postId provided in URL", true);
+      }
+    </script>
+  </body>
+</html>

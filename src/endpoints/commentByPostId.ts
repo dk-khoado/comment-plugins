@@ -1,27 +1,20 @@
-import { Bool, Num, OpenAPIRoute } from "chanfana";
+import { Bool, OpenAPIRoute } from "chanfana";
 import { z } from "zod";
 import { Comment } from "../types";
 import { getDatabase } from "database";
 
-export class CommentList extends OpenAPIRoute {
+export class CommentsByPostId extends OpenAPIRoute {
   schema = {
     tags: ["Comments"],
-    summary: "List Comments",
+    summary: "Get all comments by postId",
     request: {
-      query: z.object({
-        page: Num({
-          description: "Page number",
-          default: 0,
-        }),
-        pageSize: Num({
-          description: "Number of items per page",
-          default: 10,
-        }),
+      params: z.object({
+        postId: z.string().nonempty(),
       }),
     },
     responses: {
       "200": {
-        description: "Returns a list of tasks",
+        description: "Returns a list of comments for the specified postId",
         content: {
           "application/json": {
             schema: z.object({
@@ -40,13 +33,20 @@ export class CommentList extends OpenAPIRoute {
     // Get validated data
     const data = await this.getValidatedData<typeof this.schema>();
 
+    // Retrieve the validated query parameters
+    const { postId } = data.params;
+
+    // Get the database connection
     const db = getDatabase(c.env);
 
+    // Fetch comments by postId from the database
     const comments = await db.comment.findMany({
-      skip: data.query.page * data.query.pageSize,
-      take: data.query.pageSize,
+      where: { postId },
+      include: { author: true },
+      orderBy: { createdAt: "desc" },
     });
 
+    // Return the list of comments
     return {
       success: true,
       result: {

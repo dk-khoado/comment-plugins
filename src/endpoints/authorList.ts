@@ -1,12 +1,11 @@
 import { Bool, Num, OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { Comment } from "../types";
 import { getDatabase } from "database";
 
-export class CommentList extends OpenAPIRoute {
+export class AuthorList extends OpenAPIRoute {
   schema = {
-    tags: ["Comments"],
-    summary: "List Comments",
+    tags: ["Authors"],
+    summary: "List Authors",
     request: {
       query: z.object({
         page: Num({
@@ -21,13 +20,19 @@ export class CommentList extends OpenAPIRoute {
     },
     responses: {
       "200": {
-        description: "Returns a list of tasks",
+        description: "Returns a list of authors",
         content: {
           "application/json": {
             schema: z.object({
               success: Bool(),
               result: z.object({
-                comments: Comment.array(),
+                authors: z.array(
+                  z.object({
+                    id: z.string(),
+                    name: z.string().nullable(),
+                    email: z.string().nullable(),
+                  })
+                ),
               }),
             }),
           },
@@ -40,17 +45,23 @@ export class CommentList extends OpenAPIRoute {
     // Get validated data
     const data = await this.getValidatedData<typeof this.schema>();
 
+    // Retrieve the validated query parameters
+    const { page, pageSize } = data.query;
+
+    // Get the database connection
     const db = getDatabase(c.env);
 
-    const comments = await db.comment.findMany({
-      skip: data.query.page * data.query.pageSize,
-      take: data.query.pageSize,
+    // Fetch authors with pagination from the database
+    const authors = await db.user.findMany({
+      skip: page * pageSize,
+      take: pageSize,
     });
 
+    // Return the list of authors
     return {
       success: true,
       result: {
-        comments,
+        authors,
       },
     };
   }
