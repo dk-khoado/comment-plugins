@@ -45,6 +45,15 @@ export class CommentList extends OpenAPIRoute {
     const comments = await db.comment.findMany({
       skip: data.query.page * data.query.pageSize,
       take: data.query.pageSize,
+      include: {
+        replies: true,
+        author: {
+          select: {
+            name: true,
+            id: true,
+          },
+        },
+      },
     });
 
     return {
