@@ -24,9 +24,11 @@
     "target": "esnext",
     "module": "esnext",
     "types": [
+      "vitest/globals",
       "@types/node",
       "@types/service-worker-mock",
-      "@cloudflare/workers-types/2023-07-01"
+      "@cloudflare/workers-types/2023-07-01",
+      "@cloudflare/vitest-pool-workers"
     ],
     "paths": {
       "@/*": ["./ui/*"],

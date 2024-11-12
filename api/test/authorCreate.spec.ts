@@ -1,102 +1,109 @@
-import { describe, it, expect, vi } from "vitest";
-import { AuthorCreate } from "../endpoints/authorCreate";
-import { getDatabase } from "database";
-import { Context } from "hono";
+import { describe, it, expect, beforeEach, vi, Mock } from "vitest";
+import worker from "../index";
+import { env } from "cloudflare:test";
 
-// Mock the database
-vi.mock("database", () => ({
-  getDatabase: vi.fn(),
-}));
-
-describe("AuthorCreate Endpoint", () => {
+describe("Author API", () => {
   it("should create a new author successfully", async () => {
-    const mockDb = {
-      user: {
-        findUnique: vi.fn().mockResolvedValue(null),
-        create: vi.fn().mockResolvedValue({
-          id: "1",
-          name: "John Doe",
-          email: "john.doe@example.com",
-        }),
-      },
+    const requestBody = {
+      name: "John Doe",
+      email: "john.doe@example.com",
+    };
+    const createdAuthor = {
+      name: "John Doe",
+      email: "john.doe@example.com",
     };
 
-    getDatabase.mockReturnValue(mockDb);
-
-    const authorCreate = new AuthorCreate();
-    const env = { AUTH_TOKEN: "valid-token" };
-    const req = new Request("http://localhost/api/authors", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "John Doe",
-        email: "john.doe@example.com",
-      }),
-    });
-
-    const context = new Context(req, { env });
-
-    const response = await authorCreate.handle(context);
-
-    expect(response).toEqual({
-      success: true,
-      author: {
-        id: "1",
-        name: "John Doe",
-        email: "john.doe@example.com",
+    const res = await worker.request(
+      "/api/authors",
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
       },
-    });
+      env
+    );
+    const response = (await res.json()) as {
+      author: { name: string; email: string };
+    };
 
-    expect(mockDb.user.findUnique).toHaveBeenCalledWith({
-      where: { email: "john.doe@example.com" },
-    });
-
-    expect(mockDb.user.create).toHaveBeenCalledWith({
-      data: {
-        name: "John Doe",
-        email: "john.doe@example.com",
-      },
-    });
+    expect(res.status).toBe(200);
+    expect(response.author.name).toEqual(createdAuthor.name);
+    expect(response.author.email).toEqual(createdAuthor.email);
   });
 
-  it("should return an error if the email already exists", async () => {
-    const mockDb = {
-      user: {
-        findUnique: vi.fn().mockResolvedValue({
-          id: "1",
-          name: "John Doe",
-          email: "john.doe@example.com",
-        }),
-        create: vi.fn(),
-      },
+  it("should return an error if email already exists", async () => {
+    const requestBody = {
+      name: "Jane Doe",
+      email: "john.doe@example.com", // Same email as the previous test
     };
 
-    getDatabase.mockReturnValue(mockDb);
+    await worker.request(
+      "/api/authors",
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      },
+      env
+    );
 
-    const authorCreate = new AuthorCreate();
-    const env = { AUTH_TOKEN: "valid-token" };
-    const req = new Request("http://localhost/api/authors", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "John Doe",
-        email: "john.doe@example.com",
-      }),
-    });
+    const res = await worker.request(
+      "/api/authors",
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      },
+      env
+    );
+    const response = (await res.json()) as {
+      success: boolean;
+      message: string;
+    };
 
-    const context = new Context(req, { env });
+    expect(res.status).toBe(200);
+    expect(response.success).toBe(false);
+    expect(response.message).toBe("Email already exists");
+  });
 
-    const response = await authorCreate.handle(context);
+  it("should create an author without a name", async () => {
+    const requestBody = {
+      email: "jane.doe@example.com",
+    };
+    const createdAuthor = {
+      name: null,
+      email: "jane.doe@example.com",
+    };
 
-    expect(response).toEqual({
-      success: false,
-      message: "Email already exists",
-    });
+    const res = await worker.request(
+      "/api/authors",
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      },
+      env
+    );
+    const response = (await res.json()) as {
+      author: { name: string | null; email: string };
+    };
 
-    expect(mockDb.user.findUnique).toHaveBeenCalledWith({
-      where: { email: "john.doe@example.com" },
-    });
+    expect(res.status).toBe(200);
+    expect(response.author.name).toBeNull();
+    expect(response.author.email).toEqual(createdAuthor.email);
+  });
 
-    expect(mockDb.user.create).not.toHaveBeenCalled();
+  it("should return an error for invalid email format", async () => {
+    const requestBody = {
+      name: "Invalid Email",
+      email: "invalid-email",
+    };
+
+    const res = await worker.request(
+      "/api/authors",
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      },
+      env
+    );
+
+    expect(res.status).toBe(400);
   });
 });

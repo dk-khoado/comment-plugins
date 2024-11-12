@@ -33,7 +33,6 @@ else
 fi
 
 
-
 # Generate migration using Prisma migrate diff
 npx prisma migrate diff \
   --from-empty \

@@ -41,8 +41,15 @@ export class CommentsByPostId extends OpenAPIRoute {
 
     // Fetch comments by postId from the database
     const comments = await db.comment.findMany({
-      where: { postId },
-      include: { author: { select: { id: true, name: true } } },
+      where: { postId, parentId: null },
+      include: {
+        author: { select: { id: true, name: true } },
+        replies: {
+          include: {
+            author: { select: { id: true, name: true } },
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
 

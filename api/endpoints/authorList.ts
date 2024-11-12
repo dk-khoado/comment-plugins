@@ -11,7 +11,7 @@ export class AuthorList extends OpenAPIRoute {
         page: Num({
           description: "Page number",
           default: 0,
-        }),
+        }).min(0),
         pageSize: Num({
           description: "Number of items per page",
           default: 10,

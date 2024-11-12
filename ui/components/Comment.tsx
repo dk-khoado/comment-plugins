@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { CommentProps } from "./types";
-import { Button } from "./ui/button";
+import clsx from "clsx";
+import ReplyForm from "./replyForm";
 
 const generateAvatarUrl = (name: string, size = 40) => {
   const initials = name
@@ -10,31 +11,29 @@ const generateAvatarUrl = (name: string, size = 40) => {
   return `https://ui-avatars.com/api/?name=${initials}&size=${size}&background=random`;
 };
 
-const Comment: React.FC<CommentProps> = ({ comment }) => {
+const Comment: React.FC<CommentProps> = ({ comment, parentId }) => {
   const [showReplyForm, setShowReplyForm] = useState(false);
 
-  const handleReplySubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const newReply = {
-      id: Date.now().toString(),
-      author: { name: formData.get("author") as string },
-      content: formData.get("content") as string,
-      createdAt: new Date().toISOString(),
-    };
+  const onReplySuccess = () => {
     setShowReplyForm(false);
-    event.currentTarget.reset();
   };
 
+  const onReply = () => {
+    setShowReplyForm(!showReplyForm);
+  };
   return (
-    <li className="bg-white p-4 rounded-lg shadow-md flex items-start space-x-4">
+    <li
+      className={clsx("bg-white p-4 rounded-lg flex items-start space-x-4", {
+        "shadow-md": !parentId,
+      })}
+    >
       <img
         src={generateAvatarUrl(comment.author.name)}
         alt="Avatar"
         className="w-10 h-10 rounded-full"
         loading="lazy"
       />
-      <div>
+      <div className="w-full">
         <div className="flex items-center space-x-2">
           <strong className="block text-lg font-semibold">
             {comment.author.name}
@@ -46,27 +45,23 @@ const Comment: React.FC<CommentProps> = ({ comment }) => {
         <div className="mt-2 text-gray-600">{comment.content}</div>
         <button
           className="text-sm text-indigo-600 hover:underline"
-          onClick={() => setShowReplyForm(!showReplyForm)}
+          onClick={onReply}
         >
           Reply
         </button>
         {showReplyForm && (
-          <form className="mt-4 space-y-2" onSubmit={handleReplySubmit}>
-            <input
-              type="text"
-              name="author"
-              placeholder="Your name"
-              className="w-full p-2 border border-gray-300 rounded-md"
-            />
-            <textarea
-              name="content"
-              placeholder="Your reply"
-              className="w-full p-2 border border-gray-300 rounded-md"
-            />
-            <div className="flex justify-end">
-              <Button type="submit">Reply</Button>
-            </div>
-          </form>
+          <ReplyForm
+            parentId={parentId || comment.id}
+            onSuccess={onReplySuccess}
+          />
+        )}
+
+        {comment.replies && (
+          <ul className="space-y-4 mt-4 ">
+            {comment.replies.map((child) => (
+              <Comment key={child.id} comment={child} parentId={comment.id} />
+            ))}
+          </ul>
         )}
       </div>
     </li>

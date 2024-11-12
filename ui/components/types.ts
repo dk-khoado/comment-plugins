@@ -1,9 +1,16 @@
 export interface CommentProps {
-  comment: {
-    id: string;
-    author: { name: string };
-    content: string;
-    createdAt: string;
-    replies?: CommentProps["comment"][];
-  };
+  className?: string;
+  parentId?: string;
+  comment: Comment;
+}
+
+export interface Comment {
+  id: string;
+  author: { name: string };
+  content: string;
+  createdAt: string;
+  replies?: Comment[];
+}
+export interface ReplyCommentFormData {
+  content: string;
 }

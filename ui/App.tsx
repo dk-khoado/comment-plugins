@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import CommentList from "@/components/CommentList";
 import { CommentProps } from "@/components/types";
 import { Input } from "@/components/ui/input";
@@ -6,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import useAuthorStore from "./hooks/authorHook";
+import useAuthorStore from "./hooks/useAuthor";
 import clsx from "clsx";
+import useSearchParams from "./hooks/useSearchParams";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import apiClient from "./api";
 interface CommentFormData {
   name: string;
   email: string;
@@ -16,8 +19,10 @@ interface CommentFormData {
 
 function App() {
   const [comments, setComments] = useState<CommentProps["comment"][]>([]);
-
+  const [searchParams] = useSearchParams();
   const { setAuthor, email, name, clear } = useAuthorStore();
+
+  const postId = searchParams.get("postId");
 
   const {
     register,
@@ -29,55 +34,60 @@ function App() {
     defaultValues: { name: name, email: email, content: "" },
   });
 
-  useEffect(() => {
-    // Get query parameter from URL
-    const queryParams = new URLSearchParams(window.location.search);
-    const postId = queryParams.get("postId");
+  const { data } = useQuery({
+    queryKey: ["comments", postId],
+    queryFn: async () => {
+      const response = await apiClient(`/api/comments/posts/${postId}`);
+      const data = response.data;
+      return data.result.comments;
+    },
+    enabled: !!postId,
+  });
 
-    // Fetch comments from API
-    const fetchComments = async () => {
-      const response = await fetch(`/api/comments/${postId}`);
-      const data = await response.json();
-      if (data.success) {
-        setComments(data.result.comments);
-      }
-    };
-    fetchComments();
-  }, []);
+  const mutation = useMutation({
+    mutationFn: async (formData: CommentFormData) => {
+      const postId = searchParams.get("postId");
 
-  const onComment = async (formData: CommentFormData) => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const postId = queryParams.get("postId");
+      const newComment = {
+        author: {
+          name: formData.name,
+          email: formData.email,
+        },
+        comment: {
+          content: formData.content,
+          postId: postId || "default",
+          postType: "post",
+        },
+      };
 
-    const newComment = {
-      author: {
-        name: formData.name,
-        email: formData.email,
-      },
-      comment: {
-        content: formData.content,
-        postId: postId || "default",
-        postType: "post",
-      },
-    };
-
-    // Assuming you have an API endpoint to submit comments
-    const response = await fetch(`/api/comments-and-authors`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(newComment),
-    });
-
-    const data = await response.json();
-    if (data.success) {
+      const response = await apiClient(`/api/comments-and-authors`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        data: newComment,
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
       setAuthor(data.author);
       setComments([{ ...data.comment, author: data.author }, ...comments]);
       resetField("content");
-    }
-  };
+    },
+  });
 
+  useEffect(() => {
+    if (data) {
+      setComments(data);
+    }
+  }, [data]);
+
+  const onComment = async (formData: CommentFormData) => {
+    mutation.mutate(formData);
+  };
+  if (!postId) {
+    return <div>Invalid post id</div>;
+  }
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Comments</h1>

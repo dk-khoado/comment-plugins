@@ -6,6 +6,6 @@ export const Comment = z.object({
   content: Str({ required: true }),
   authorId: Str({ required: true }),
   parentId: Str().optional(),
-  postId: Str().optional(),
+  postId: Str({ required: true }),
   postType: Str().optional(),
 });

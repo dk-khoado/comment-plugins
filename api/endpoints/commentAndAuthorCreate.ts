@@ -19,7 +19,7 @@ export class CommentAndAuthorCreate extends OpenAPIRoute {
               comment: z.object({
                 content: z.string(),
                 parentId: z.string().optional(),
-                postId: z.string().optional(),
+                postId: z.string().min(1),
                 postType: z.string().optional(),
               }),
             }),
@@ -82,6 +82,16 @@ export class CommentAndAuthorCreate extends OpenAPIRoute {
           success: false,
           message: "Parent comment does not exist",
         };
+      }
+      // Check if the parent comment is already a reply (2 levels deep)
+      if (parentComment.parentId) {
+        return c.json(
+          {
+            success: false,
+            message: "Replies beyond 2 levels deep are not allowed",
+          },
+          400
+        );
       }
     }
 

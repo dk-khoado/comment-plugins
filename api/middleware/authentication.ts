@@ -11,6 +11,7 @@ export const authentication = async (c: Context, next: Next) => {
     { path: "/api/authors", method: "POST" },
     { path: "/api/comments-and-authors", method: "POST" },
     { path: /^\/api\/comments\/[^/]+$/, method: "GET" }, // Regex to match /api/comments/:postId
+    { path: /^\/api\/comments\/posts\/[^/]+$/, method: "GET" }, // Regex to match /api/comments/:postId
   ];
 
   // Check if the current request should be ignored

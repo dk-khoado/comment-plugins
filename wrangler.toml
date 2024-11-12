@@ -3,6 +3,7 @@ name = "rc-comment"
 main = "api/index.ts"
 compatibility_date = "2024-11-06"
 
+compatibility_flags = ["nodejs_compat"]
 [observability]
 enabled = true
 
@@ -11,6 +12,8 @@ binding = "DB"
 database_name = "my-blog"                            # change this to your database name
 database_id = "ec90c5f6-2bad-4120-91a9-b7f78c14d922" # change this to your database id
 migrations_dir = "migrations"
+preview_database_id = "db"                           # change this to your preview database id
+
 
 [assets]
 directory = "./dist"

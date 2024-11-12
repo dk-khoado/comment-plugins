@@ -32,10 +32,10 @@ openapi.post("/api/authors", AuthorCreate);
 openapi.get("/api/authors", AuthorList);
 openapi.get("/api/comments", CommentList);
 openapi.post("/api/comments", CommentCreate);
-openapi.get("/api/comments/:postId", CommentsByPostId);
 openapi.put("/api/comments/:commentId", CommentUpdate);
 openapi.delete("/api/comments/:commentId", CommentDelete);
 openapi.post("/api/comments-and-authors", CommentAndAuthorCreate);
+openapi.get("/api/comments/posts/:postId", CommentsByPostId);
 
 // Export the Hono app
 export default app;

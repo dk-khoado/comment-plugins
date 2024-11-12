@@ -22,6 +22,17 @@ export class CommentDelete extends OpenAPIRoute {
           },
         },
       },
+      404: {
+        description: "Comment not found",
+        content: {
+          "application/json": {
+            schema: z.object({
+              success: Bool(),
+              error: z.string(),
+            }),
+          },
+        },
+      },
     },
   };
 
@@ -35,14 +46,23 @@ export class CommentDelete extends OpenAPIRoute {
     // Get the database connection
     const db = getDatabase(c.env);
 
+    // Check if the comment exists
+    const existingComment = await db.comment.findUnique({
+      where: { id: commentId },
+    });
+
+    if (!existingComment) {
+      return c.json({ success: false, error: "Comment not found" }, 404);
+    }
+
     // Delete the comment from the database
     await db.comment.delete({
       where: { id: commentId },
     });
 
     // Return the deletion status
-    return {
+    return c.json({
       success: true,
-    };
+    });
   }
 }
